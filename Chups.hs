@@ -52,7 +52,12 @@ cpsTransform (Lambda args body) k =
         (Call k [cpsT])
 
 -- Function calls
-cpsTransform (Call func args) k = undefined 
+cpsTransform (Call func args) k = 
+    let check = checkLiteralOrAtomic ([func] ++ args)
+    in 
+        if check
+            then (Call func (args ++ [k]))
+            else handleNonAtomic (Call func args) k 
 
 -- If confitions
 cpsTransform (If cond bodyTrue bodyFalse) k = undefined
@@ -75,3 +80,43 @@ cpsTransformProgS _ = undefined
 -- to generate fresh variable names. See assignment handout for details.
 cpsTransformS :: Expr -> Expr -> State.State Integer Expr
 cpsTransformS _ _ = undefined
+
+-------------------------------------------------------------------------------
+-- |
+-- * HELPERS
+-------------------------------------------------------------------------------
+-- Helper function to determine whether or not all arguments are literals/identifiers
+checkLiteralOrAtomic :: [Expr] -> Bool
+checkLiteralOrAtomic expr = 
+    foldl checkLiteralOrAtomicUpdate True expr
+
+-- Update function for previous helper
+checkLiteralOrAtomicUpdate :: Bool -> Expr -> Bool
+checkLiteralOrAtomicUpdate prev (IntLiteral x) = 
+    if prev
+        then True
+        else False
+
+checkLiteralOrAtomicUpdate prev (BoolLiteral x) = 
+    if prev 
+        then True
+        else False
+
+checkLiteralOrAtomicUpdate prev (Identifier x) = 
+    if prev 
+        then True
+        else False
+
+checkLiteralOrAtomicUpdate prev new = False
+
+-- Helper for handling case where function call is non atomic
+handleNonAtomic :: Expr -> Expr -> Expr
+-- case where 'f' subexpression is atomic
+handleNonAtomic (Call (Identifier f) args) k = undefined
+
+-- 'f' subexpression is non atomic
+handleNonAtomic (Call func args) k = 
+    let bodyTrans = cpsTransform (Call (Identifier "_v") args) k
+        newLam = Lambda ["_v"] bodyTrans
+    in
+        cpsTransform func newLam
