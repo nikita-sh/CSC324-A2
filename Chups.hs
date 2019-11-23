@@ -58,7 +58,20 @@ cpsTransform (Call func args) k =
         else handleNonAtomic (Call func args) k []
 
 -- If confitions
-cpsTransform (If cond bodyTrue bodyFalse) k = undefined
+cpsTransform (If cond bodyTrue bodyFalse) k = 
+    if (checkNonAtomic cond)
+        then 
+            let condTrans = cpsTransform cond k 
+                bodyTrueTrans = cpsTransform bodyTrue k 
+                bodyFalseTrans = cpsTransform bodyFalse k
+            in 
+                (If cond bodyTrueTrans bodyFalseTrans)
+        else 
+            let bodyTrueTrans = cpsTransform bodyTrue k
+                bodyFalseTrans = cpsTransform bodyFalse k
+            in
+                (If cond bodyTrueTrans bodyFalseTrans)
+                
 
 -- Remember that for Task 1, you only need to handle the core Chups expression types.
 -- You can leave this pattern-match line to prevent an "unmatched pattern" compiler warning.
