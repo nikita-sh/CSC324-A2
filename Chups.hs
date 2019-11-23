@@ -38,8 +38,21 @@ cpsTransformProg _ = undefined
 -- a unary function representing the continuation to apply to the expression.
 -- The resulting expression should be semantically equivalent to
 -- calling the continuation on the expression.
-cpsTransform :: Expr -> Expr -> Expr
-cpsTransform _ _ = undefined
+cpsTransform :: Expr -> Expr -> Expr 
+-- Implementation of cpsTransform for core expressions
+-- Literals
+cpsTransform (IntLiteral x) k = k x
+cpsTransform (BoolLiteral x) k = k x
+cpsTransform (Identifier x) k = k x 
+
+-- Function definitions
+cpsTransform (Lambda args body) k = undefined 
+
+-- Function calls
+cpsTransform (Call func args) k = undefined 
+
+-- If confitions
+cpsTransform (If cond bodyTrue bodyFalse) k = undefined
 
 -- Remember that for Task 1, you only need to handle the core Chups expression types.
 -- You can leave this pattern-match line to prevent an "unmatched pattern" compiler warning.
