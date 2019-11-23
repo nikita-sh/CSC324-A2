@@ -41,12 +41,12 @@ cpsTransformProg _ = undefined
 cpsTransform :: Expr -> Expr -> Expr 
 -- Implementation of cpsTransform for core expressions
 -- Literals
-cpsTransform (IntLiteral x) k = k x
-cpsTransform (BoolLiteral x) k = k x
-cpsTransform (Identifier x) k = k x 
+cpsTransform (IntLiteral x) k = (Call k [(IntLiteral x)])
+cpsTransform (BoolLiteral x) k = (Call k [(BoolLiteral x)])
+cpsTransform (Identifier x) k = (Call k [(Identifier x)])
 
 -- Function definitions
-cpsTransform (Lambda args body) k = undefined 
+cpsTransform (Lambda args body) k = undefined
 
 -- Function calls
 cpsTransform (Call func args) k = undefined 
