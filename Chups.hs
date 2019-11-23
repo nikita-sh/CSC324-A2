@@ -46,7 +46,10 @@ cpsTransform (BoolLiteral x) k = (Call k [(BoolLiteral x)])
 cpsTransform (Identifier x) k = (Call k [(Identifier x)])
 
 -- Function definitions
-cpsTransform (Lambda args body) k = undefined
+cpsTransform (Lambda args body) k = 
+    let cpsT = (Lambda (args ++ ["_k"]) (cpsTransform body (Identifier "_k")))
+    in
+        (Call k [cpsT])
 
 -- Function calls
 cpsTransform (Call func args) k = undefined 
