@@ -53,11 +53,9 @@ cpsTransform (Lambda args body) k =
 
 -- Function calls
 cpsTransform (Call func args) k = 
-    let check = checkLiteralOrAtomic ([func] ++ args)
-    in 
-        if check
-            then (Call func (args ++ [k]))
-            else handleNonAtomic (Call func args) k []
+    if (checkLiteralOrAtomic ([func] ++ args))
+        then (Call func (args ++ [k]))
+        else handleNonAtomic (Call func args) k []
 
 -- If confitions
 cpsTransform (If cond bodyTrue bodyFalse) k = undefined
