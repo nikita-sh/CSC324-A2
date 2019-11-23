@@ -57,7 +57,7 @@ cpsTransform (Call func args) k =
     in 
         if check
             then (Call func (args ++ [k]))
-            else handleNonAtomic (Call func args) k 
+            else handleNonAtomic (Call func args) k []
 
 -- If confitions
 cpsTransform (If cond bodyTrue bodyFalse) k = undefined
@@ -110,13 +110,29 @@ checkLiteralOrAtomicUpdate prev (Identifier x) =
 checkLiteralOrAtomicUpdate prev new = False
 
 -- Helper for handling case where function call is non atomic
-handleNonAtomic :: Expr -> Expr -> Expr
+handleNonAtomic :: Expr -> Expr -> [Expr] ->Expr
 -- case where 'f' subexpression is atomic
-handleNonAtomic (Call (Identifier f) args) k = undefined
+handleNonAtomic (Call (Identifier f) args) k seen = 
+    if (checkNonAtomic (head args))
+        then 
+            let newArgs = seen ++ [Identifier "_v"] ++ (tail args)
+                bodyTrans = cpsTransform (Call (Identifier f) newArgs) k 
+                newLam = Lambda ["_v"] bodyTrans 
+            in 
+                cpsTransform (head args) newLam 
+        else 
+            handleNonAtomic (Call (Identifier f) (tail args)) k (seen ++ [(head args)])
 
 -- 'f' subexpression is non atomic
-handleNonAtomic (Call func args) k = 
+handleNonAtomic (Call func args) k seen = 
     let bodyTrans = cpsTransform (Call (Identifier "_v") args) k
         newLam = Lambda ["_v"] bodyTrans
     in
         cpsTransform func newLam
+
+-- Returns whether or not the given expression is atomic.
+checkNonAtomic :: Expr -> Bool
+checkNonAtomic (Identifier x) = False 
+checkNonAtomic (BoolLiteral x) = False 
+checkNonAtomic (IntLiteral x) = False
+checkNonAtomic x = True
