@@ -31,7 +31,22 @@ import ChupsTypes (Prog(..), Binding(..), Expr(..))
 -- core language, and return a CPS-transformed version of this program.
 -- Remember to use pass the `_id` continuation for top-level expressions.
 cpsTransformProg :: Prog -> Prog
-cpsTransformProg _ = undefined
+cpsTransformProg (Prog bindings expr) =
+    let
+        contContext = (Identifier "_id")
+        bindingsTrans = foldl
+            (\acc binding -> acc ++ [cpsTransformBinding binding contContext]) 
+            []
+            bindings
+        exprTrans = cpsTransform expr contContext
+    in
+        Prog bindingsTrans exprTrans
+
+
+cpsTransformBinding :: Binding -> Expr -> Binding
+cpsTransformBinding (Binding identifier expr) k =
+    Binding identifier (cpsTransform expr k)
+
 
 -- | The main transformation function, which takes two Expr values:
 -- the first is the expression to transform, and the second is (an Expr representation of)
