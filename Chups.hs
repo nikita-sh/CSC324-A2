@@ -53,25 +53,25 @@ cpsTransform (Lambda args body) k =
 
 -- Function calls
 cpsTransform (Call func args) k = 
-    if (checkLiteralOrAtomic ([func] ++ args))
+    if (allSubexpressionsAtomic ([func] ++ args))
         then (Call func (args ++ [k]))
         else handleNonAtomic (Call func args) k []
 
 -- If confitions
-cpsTransform (If cond bodyTrue bodyFalse) k = 
-    if (checkNonAtomic cond)
-        then 
-            let condTrans = cpsTransform cond k 
-                bodyTrueTrans = cpsTransform bodyTrue k 
-                bodyFalseTrans = cpsTransform bodyFalse k
-            in 
-                (If cond bodyTrueTrans bodyFalseTrans)
-        else 
+cpsTransform (If cond bodyTrue bodyFalse) k =
+    if (checkAtomic cond)
+        then
             let bodyTrueTrans = cpsTransform bodyTrue k
                 bodyFalseTrans = cpsTransform bodyFalse k
             in
                 (If cond bodyTrueTrans bodyFalseTrans)
-                
+        else
+            let condTrans = cpsTransform cond k
+                bodyTrueTrans = cpsTransform bodyTrue k
+                bodyFalseTrans = cpsTransform bodyFalse k
+            in
+                (If condTrans bodyTrueTrans bodyFalseTrans)
+
 
 -- Remember that for Task 1, you only need to handle the core Chups expression types.
 -- You can leave this pattern-match line to prevent an "unmatched pattern" compiler warning.
@@ -97,53 +97,34 @@ cpsTransformS _ _ = undefined
 -- * HELPERS
 -------------------------------------------------------------------------------
 -- Helper function to determine whether or not all arguments are literals/identifiers
-checkLiteralOrAtomic :: [Expr] -> Bool
-checkLiteralOrAtomic expr = 
-    foldl checkLiteralOrAtomicUpdate True expr
+allSubexpressionsAtomic :: [Expr] -> Bool
+allSubexpressionsAtomic expr = 
+    all (checkAtomic) expr
 
--- Update function for previous helper
-checkLiteralOrAtomicUpdate :: Bool -> Expr -> Bool
-checkLiteralOrAtomicUpdate prev (IntLiteral x) = 
-    if prev
-        then True
-        else False
-
-checkLiteralOrAtomicUpdate prev (BoolLiteral x) = 
-    if prev 
-        then True
-        else False
-
-checkLiteralOrAtomicUpdate prev (Identifier x) = 
-    if prev 
-        then True
-        else False
-
-checkLiteralOrAtomicUpdate prev new = False
+-- Returns whether or not the given expression is atomic.
+checkAtomic :: Expr -> Bool
+checkAtomic (IntLiteral x) = True
+checkAtomic (BoolLiteral x) = True
+checkAtomic (Identifier x) = True
+checkAtomic _ = False
 
 -- Helper for handling case where function call is non atomic
 handleNonAtomic :: Expr -> Expr -> [Expr] ->Expr
 -- case where 'f' subexpression is atomic
-handleNonAtomic (Call (Identifier f) args) k seen = 
-    if (checkNonAtomic (head args))
-        then 
-            let newArgs = seen ++ [Identifier "_v"] ++ (tail args)
-                bodyTrans = cpsTransform (Call (Identifier f) newArgs) k 
-                newLam = Lambda ["_v"] bodyTrans 
-            in 
-                cpsTransform (head args) newLam 
+handleNonAtomic (Call (Identifier f) (x:xs)) k seen =
+    if (not $ checkAtomic x)
+        then
+            let newArgs = seen ++ [Identifier "_v"] ++ xs
+                bodyTrans = cpsTransform (Call (Identifier f) newArgs) k
+                newLam = Lambda ["_v"] bodyTrans
+            in
+                cpsTransform x newLam
         else 
-            handleNonAtomic (Call (Identifier f) (tail args)) k (seen ++ [(head args)])
+            handleNonAtomic (Call (Identifier f) xs) k (seen ++ [x])
 
 -- 'f' subexpression is non atomic
-handleNonAtomic (Call func args) k seen = 
+handleNonAtomic (Call func args) k seen =
     let bodyTrans = cpsTransform (Call (Identifier "_v") args) k
         newLam = Lambda ["_v"] bodyTrans
     in
         cpsTransform func newLam
-
--- Returns whether or not the given expression is atomic.
-checkNonAtomic :: Expr -> Bool
-checkNonAtomic (Identifier x) = False 
-checkNonAtomic (BoolLiteral x) = False 
-checkNonAtomic (IntLiteral x) = False
-checkNonAtomic x = True
