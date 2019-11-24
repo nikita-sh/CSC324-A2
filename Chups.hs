@@ -34,9 +34,8 @@ cpsTransformProg :: Prog -> Prog
 cpsTransformProg (Prog bindings expr) =
     let
         contContext = (Identifier "_id")
-        bindingsTrans = foldl
-            (\acc binding -> acc ++ [cpsTransformBinding binding contContext]) 
-            []
+        bindingsTrans = map
+            (\binding -> cpsTransformBinding binding contContext)
             bindings
         exprTrans = cpsTransform expr contContext
     in
@@ -97,9 +96,8 @@ cpsTransformProgS :: Prog -> Prog
 cpsTransformProgS (Prog bindings expr) =
     let
         contContext = (Identifier "_id")
-        bindingsTrans = foldl
-            (\acc binding -> acc ++ [cpsTransformBindingS binding contContext]) 
-            []
+        bindingsTrans = map
+            (\binding -> cpsTransformBindingS binding contContext)
             bindings
         exprTrans = State.evalState (cpsTransformS expr contContext) 0
     in
