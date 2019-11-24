@@ -42,11 +42,9 @@ cpsTransformProg (Prog bindings expr) =
     in
         Prog bindingsTrans exprTrans
 
-
 cpsTransformBinding :: Binding -> Expr -> Binding
 cpsTransformBinding (Binding identifier expr) k =
     Binding identifier (cpsTransform expr k)
-
 
 -- | The main transformation function, which takes two Expr values:
 -- the first is the expression to transform, and the second is (an Expr representation of)
@@ -96,7 +94,20 @@ cpsTransform _ _ =
 -- | This is similar to cpsTransformProg, except that it uses a stateful
 -- version of cpsTransform to generate unique names and avoid name collisions.
 cpsTransformProgS :: Prog -> Prog
-cpsTransformProgS _ = undefined
+cpsTransformProgS (Prog bindings expr) =
+    let
+        contContext = (Identifier "_id")
+        bindingsTrans = foldl
+            (\acc binding -> acc ++ [cpsTransformBindingS binding contContext]) 
+            []
+            bindings
+        exprTrans = State.evalState (cpsTransformS expr contContext) 0
+    in
+        Prog bindingsTrans exprTrans
+
+cpsTransformBindingS :: Binding -> Expr -> Binding
+cpsTransformBindingS (Binding identifier expr) k =
+    Binding identifier (State.evalState (cpsTransformS expr k) 0)
 
 -- | Stateful version of cpsTransform, which uses its Integer state as a counter
 -- to generate fresh variable names. See assignment handout for details.
