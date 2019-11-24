@@ -55,7 +55,7 @@ cpsTransform (Lambda args body) k =
 -- Function calls
 cpsTransform (Call func args) k = 
     if (allSubexpressionsAtomic ([func] ++ args))
-        then (Call func (args ++ [k]))
+        then Call func (args ++ [k])
         else handleNonAtomic (Call func args) k []
 
 -- If confitions
@@ -66,7 +66,7 @@ cpsTransform (If cond bodyTrue bodyFalse) k =
             then cond
             else cpsTransform cond k
     in
-        (If condTrans bodyTrueTrans bodyFalseTrans)
+        If condTrans bodyTrueTrans bodyFalseTrans
 
 
 -- Remember that for Task 1, you only need to handle the core Chups expression types.
@@ -90,19 +90,38 @@ cpsTransformS (IntLiteral x) k = return $ Call k [(IntLiteral x)]
 cpsTransformS (BoolLiteral x) k = return $ Call k [(BoolLiteral x)]
 cpsTransformS (Identifier x) k = return $ Call k [(Identifier x)]
 
+-- Function definitions
 cpsTransformS (Lambda args body) k = do
-    counter <- incremented
+    counter <- State.get
+    increment
     let identifier = "_k" ++ show counter
-        cpsT = Lambda (args ++ [identifier]) (cpsTransform body (Identifier identifier))
+    bodyTrans <- cpsTransformS body (Identifier identifier)
+    let cpsT = Lambda (args ++ [identifier]) bodyTrans
     return $ Call k [cpsT]
+
+-- Function calls
+cpsTransformS (Call func args) k = do
+    if (allSubexpressionsAtomic ([func] ++ args))
+        then return $ Call func (args ++ [k])
+        else handleNonAtomicS (Call func args) k []
+
+-- If confitions
+cpsTransformS (If cond bodyTrue bodyFalse) k = do
+    bodyTrueTrans <- cpsTransformS bodyTrue k
+    bodyFalseTrans <- cpsTransformS bodyFalse k
+    if (checkAtomic cond)
+        then 
+            return $ If cond bodyTrueTrans bodyFalseTrans
+        else do
+            condTrans <- cpsTransformS cond k
+            return $ If condTrans bodyTrueTrans bodyFalseTrans
 -------------------------------------------------------------------------------
 -- |
 -- * HELPERS
 -------------------------------------------------------------------------------
 -- Helper function to determine whether or not all arguments are literals/identifiers
 allSubexpressionsAtomic :: [Expr] -> Bool
-allSubexpressionsAtomic expr = 
-    all (checkAtomic) expr
+allSubexpressionsAtomic expr = all (checkAtomic) expr
 
 -- Returns whether or not the given expression is atomic.
 checkAtomic :: Expr -> Bool
@@ -132,8 +151,31 @@ handleNonAtomic (Call func args) k seen =
     in
         cpsTransform func newLam
 
-incremented :: State.State Integer Integer
-incremented = do
+-- Helper for handling case where function call is non atomic
+-- using state
+handleNonAtomicS :: Expr -> Expr -> [Expr] -> State.State Integer Expr
+-- case where 'f' subexpression is atomic
+handleNonAtomicS (Call (Identifier f) (x:xs)) k seen = do
+    if (not $ checkAtomic x)
+        then do
+            let newArgs = seen ++ [Identifier "_v"] ++ xs
+                bodyTrans = cpsTransformS (Call (Identifier f) newArgs) k
+                newLam = Lambda ["_v"] bodyTrans
+            in
+                cpsTransformS x newLam
+        else
+            handleNonAtomicS (Call (Identifier f) xs) k (seen ++ [x])
+
+-- 'f' subexpression is non atomic
+handleNonAtomicS (Call func args) k seen = do
+    counter <- State.get
+    increment
+    let identifier = "_v" ++ show counter
+    bodyTrans <- cpsTransformS (Call (Identifier identifier) args) k
+    let newLam = Lambda [identifier] bodyTrans
+    cpsTransformS func newLam
+
+increment :: State.State Integer ()
+increment = do
     curr <- State.get
     State.put (curr + 1)
-    State.get
