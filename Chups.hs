@@ -41,15 +41,16 @@ cpsTransformProg _ = undefined
 cpsTransform :: Expr -> Expr -> Expr 
 -- Implementation of cpsTransform for core expressions
 -- Literals
-cpsTransform (IntLiteral x) k = (Call k [(IntLiteral x)])
-cpsTransform (BoolLiteral x) k = (Call k [(BoolLiteral x)])
-cpsTransform (Identifier x) k = (Call k [(Identifier x)])
+cpsTransform (IntLiteral x) k = Call k [(IntLiteral x)]
+cpsTransform (BoolLiteral x) k = Call k [(BoolLiteral x)]
+cpsTransform (Identifier x) k = Call k [(Identifier x)]
 
 -- Function definitions
 cpsTransform (Lambda args body) k = 
-    let cpsT = (Lambda (args ++ ["_k"]) (cpsTransform body (Identifier "_k")))
+    let identifier = "_k"
+        cpsT = Lambda (args ++ [identifier]) (cpsTransform body (Identifier identifier))
     in
-        (Call k [cpsT])
+        Call k [cpsT]
 
 -- Function calls
 cpsTransform (Call func args) k = 
@@ -59,18 +60,13 @@ cpsTransform (Call func args) k =
 
 -- If confitions
 cpsTransform (If cond bodyTrue bodyFalse) k =
-    if (checkAtomic cond)
-        then
-            let bodyTrueTrans = cpsTransform bodyTrue k
-                bodyFalseTrans = cpsTransform bodyFalse k
-            in
-                (If cond bodyTrueTrans bodyFalseTrans)
-        else
-            let condTrans = cpsTransform cond k
-                bodyTrueTrans = cpsTransform bodyTrue k
-                bodyFalseTrans = cpsTransform bodyFalse k
-            in
-                (If condTrans bodyTrueTrans bodyFalseTrans)
+    let bodyTrueTrans = cpsTransform bodyTrue k
+        bodyFalseTrans = cpsTransform bodyFalse k
+        condTrans = if (checkAtomic cond)
+            then cond
+            else cpsTransform cond k
+    in
+        (If condTrans bodyTrueTrans bodyFalseTrans)
 
 
 -- Remember that for Task 1, you only need to handle the core Chups expression types.
@@ -90,8 +86,15 @@ cpsTransformProgS _ = undefined
 -- | Stateful version of cpsTransform, which uses its Integer state as a counter
 -- to generate fresh variable names. See assignment handout for details.
 cpsTransformS :: Expr -> Expr -> State.State Integer Expr
-cpsTransformS _ _ = undefined
+cpsTransformS (IntLiteral x) k = return $ Call k [(IntLiteral x)]
+cpsTransformS (BoolLiteral x) k = return $ Call k [(BoolLiteral x)]
+cpsTransformS (Identifier x) k = return $ Call k [(Identifier x)]
 
+cpsTransformS (Lambda args body) k = do
+    counter <- incremented
+    let identifier = "_k" ++ show counter
+        cpsT = Lambda (args ++ [identifier]) (cpsTransform body (Identifier identifier))
+    return $ Call k [cpsT]
 -------------------------------------------------------------------------------
 -- |
 -- * HELPERS
@@ -128,3 +131,9 @@ handleNonAtomic (Call func args) k seen =
         newLam = Lambda ["_v"] bodyTrans
     in
         cpsTransform func newLam
+
+incremented :: State.State Integer Integer
+incremented = do
+    curr <- State.get
+    State.put (curr + 1)
+    State.get
