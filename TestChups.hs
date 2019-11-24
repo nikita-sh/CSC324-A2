@@ -171,6 +171,15 @@ prop_prog =
 -- * Sample tests for Task 2
 -------------------------------------------------------------------------------
 
+prop_thunkS :: Bool
+prop_thunkS =
+    State.evalState 
+        (cpsTransformS (Lambda [] (IntLiteral 10)) (Identifier "cont")) 0 ==
+    -- Note the exact parameter name for the continuation.
+    Call
+        (Identifier "cont")
+        [Lambda ["_k0"] (Call (Identifier "_k0") [IntLiteral 10])]
+
 -- | Test for ((lambda (x) (* x 200)) 10), stateful version.
 prop_callFuncNonAtomicS :: Bool
 prop_callFuncNonAtomicS =
@@ -244,6 +253,43 @@ prop_callNestedS =
                    )
                ]
 
+prop_progS :: Bool
+prop_progS =
+    cpsTransformProgS
+            (Prog
+                [ Binding
+                    "f"
+                    (Lambda
+                        ["x"]
+                        (Call
+                            (Identifier "cps:*")
+                            [Identifier "x", IntLiteral 10]
+                        )
+                    )
+                , Binding "a" (IntLiteral 200)
+                ]
+                (Call (Identifier "f") [Identifier "a"])
+            )
+        == (Prog
+                [ Binding
+                    "f"
+                    (Call
+                        (Identifier "_id")
+                        [ Lambda
+                            ["x", "_k0"]
+                            (Call
+                                (Identifier "cps:*")
+                                [ Identifier "x"
+                                , IntLiteral 10
+                                , Identifier "_k0"
+                                ]
+                            )
+                        ]
+                    )
+                , Binding "a" (Call (Identifier "_id") [IntLiteral 200])
+                ]
+                (Call (Identifier "f") [Identifier "a", Identifier "_id"])
+            )
 
 main :: IO ()
 main = mapM_ quickCheck
@@ -257,7 +303,8 @@ main = mapM_ quickCheck
     , prop_callNested
     , prop_prog
     -- Task 2 tests
-
+    , prop_thunkS
     , prop_callFuncNonAtomicS
     , prop_callNestedS
+    , prop_progS
     ]
