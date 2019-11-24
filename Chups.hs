@@ -134,15 +134,15 @@ checkAtomic _ = False
 handleNonAtomic :: Expr -> Expr -> [Expr] ->Expr
 -- case where 'f' subexpression is atomic
 handleNonAtomic (Call (Identifier f) (x:xs)) k seen =
-    if (not $ checkAtomic x)
+    if (checkAtomic x)
         then
+            handleNonAtomic (Call (Identifier f) xs) k (seen ++ [x])
+        else
             let newArgs = seen ++ [Identifier "_v"] ++ xs
                 bodyTrans = cpsTransform (Call (Identifier f) newArgs) k
                 newLam = Lambda ["_v"] bodyTrans
             in
                 cpsTransform x newLam
-        else 
-            handleNonAtomic (Call (Identifier f) xs) k (seen ++ [x])
 
 -- 'f' subexpression is non atomic
 handleNonAtomic (Call func args) k seen =
@@ -156,15 +156,17 @@ handleNonAtomic (Call func args) k seen =
 handleNonAtomicS :: Expr -> Expr -> [Expr] -> State.State Integer Expr
 -- case where 'f' subexpression is atomic
 handleNonAtomicS (Call (Identifier f) (x:xs)) k seen = do
-    if (not $ checkAtomic x)
-        then do
-            let newArgs = seen ++ [Identifier "_v"] ++ xs
-                bodyTrans = cpsTransformS (Call (Identifier f) newArgs) k
-                newLam = Lambda ["_v"] bodyTrans
-            in
-                cpsTransformS x newLam
-        else
+    if (checkAtomic x)
+        then
             handleNonAtomicS (Call (Identifier f) xs) k (seen ++ [x])
+        else do
+            counter <- State.get
+            increment
+            let identifier = "_v" ++ show counter
+            let newArgs = seen ++ [Identifier identifier] ++ xs
+            bodyTrans <- cpsTransformS (Call (Identifier f) newArgs) k
+            let newLam = Lambda [identifier] bodyTrans
+            cpsTransformS x newLam
 
 -- 'f' subexpression is non atomic
 handleNonAtomicS (Call func args) k seen = do
