@@ -139,6 +139,24 @@ cpsTransformS (If cond bodyTrue bodyFalse) k = do
         else do
             condTrans <- cpsTransformS cond k
             return $ If condTrans bodyTrueTrans bodyFalseTrans
+
+-- Task 3: Manipulating control flow
+-- Note: Final CPS transformed expressions should not contain any of the following
+
+-- Shift expressions
+cpsTransformS (Shift name body) k = undefined
+
+-- Reset expressions
+cpsTransformS (Reset val) k = undefined 
+
+-- Error expressions
+cpsTransformS (Error msg) k = undefined
+
+-- Raise expressions
+cpsTransformS (Raise err) k = undefined
+
+-- Try-catch expressions
+cpsTransformS (Try body msg handler) k = undefined
 -------------------------------------------------------------------------------
 -- |
 -- * HELPERS
