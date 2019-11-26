@@ -164,7 +164,13 @@ cpsTransformS (Reset val) k = undefined
 cpsTransformS (Error msg) k = return $ Call k [Error msg]
 
 -- Raise expressions
-cpsTransformS (Raise err) k = undefined
+-- TODO: This is untested, and I'm not entirely sure it works
+cpsTransformS (Raise err) k = do 
+    counter <- State.get 
+    increment
+    let id = "_v" ++ show counter
+        newRaise = Lambda [id] err
+    cpsTransformS (Call newRaise [err]) (Identifier "_id")
 
 -- Try-catch expressions
 cpsTransformS (Try body msg handler) k = undefined
