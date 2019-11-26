@@ -140,23 +140,35 @@ cpsTransformS (If cond bodyTrue bodyFalse) k = do
             condTrans <- cpsTransformS cond k
             return $ If condTrans bodyTrueTrans bodyFalseTrans
 
--- Task 3: Manipulating control flow
--- Note: Final CPS transformed expressions should not contain any of the following
 
--- Shift expressions
-cpsTransformS (Shift name body) k = undefined
+-- Task 3: Manipulating control flow
+-- Note: Final CPS transformed expressions should not contain any of the following expressions
+
+-- TODO: The implementation below works when the shift does not call the continuation it's given
+-- anywhere. We need to handle the case where it does (by wrapping the continuation we pass in 
+-- a binary function; I tried, but no luck). Note that for now, it is passed the continuation, k,
+-- directly.
+cpsTransformS (Shift name body) k = do
+    counter <- State.get
+    increment
+    let id = "_v" ++ show counter 
+        contId = "_k"
+        newCont = Lambda [id, contId] (Call k [(Identifier id)])
+        newShift = Lambda [name] body
+    cpsTransformS (Call newShift [k]) (Identifier "_id")
 
 -- Reset expressions
-cpsTransformS (Reset val) k = undefined 
+cpsTransformS (Reset val) k = undefined
 
 -- Error expressions
-cpsTransformS (Error msg) k = undefined
+cpsTransformS (Error msg) k = return $ Call k [Error msg]
 
 -- Raise expressions
 cpsTransformS (Raise err) k = undefined
 
 -- Try-catch expressions
 cpsTransformS (Try body msg handler) k = undefined
+
 -------------------------------------------------------------------------------
 -- |
 -- * HELPERS
