@@ -158,7 +158,9 @@ cpsTransformS (Shift name body) k = do
     cpsTransformS (Call newShift [k]) (Identifier "_id")
 
 -- Reset expressions
-cpsTransformS (Reset val) k = undefined
+cpsTransformS (Reset val) k = do 
+    valTrans <- cpsTransformS val (Identifier "_id")
+    return $ Call k [valTrans]
 
 -- Error expressions
 cpsTransformS (Error msg) k = return $ Call k [Error msg]
