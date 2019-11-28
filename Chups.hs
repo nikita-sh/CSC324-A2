@@ -148,14 +148,16 @@ cpsTransformS (If cond bodyTrue bodyFalse) k = do
 -- anywhere. We need to handle the case where it does (by wrapping the continuation we pass in 
 -- a binary function; I tried, but no luck). Note that for now, it is passed the continuation, k,
 -- directly.
+
 cpsTransformS (Shift name body) k = do
     counter <- State.get
     increment
-    let id = "_v" ++ show counter 
+    bodyTrans <- cpsTransformS body (Identifier "_id")
+    let id = "_v" ++ show counter
         contId = "_k" ++ show counter
-        newCont = Lambda [id, contId] (Call k [(Identifier id)])
-        newShift = Lambda [name] body
-    cpsTransformS (Call newShift [newCont]) (Identifier "_id")
+        newExpr = Lambda [name] bodyTrans
+        newCont = Lambda [id, contId] (Call (Identifier contId) [(Call k [(Identifier id)])])
+    return (Call newExpr [newCont])
 
 -- Reset expressions
 cpsTransformS (Reset val) k = do 
