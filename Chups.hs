@@ -72,14 +72,11 @@ cpsTransform (Call func args) k =
 
 -- If confitions
 cpsTransform (If cond bodyTrue bodyFalse) k =
-    let bodyTrueTrans = cpsTransform bodyTrue k
-        bodyFalseTrans = cpsTransform bodyFalse k
-        condTrans = if (checkAtomic cond)
-            then cond
-            else cpsTransform cond k
-    in
-        If condTrans bodyTrueTrans bodyFalseTrans
-
+    if (checkAtomic cond)
+        then (If cond (cpsTransform bodyTrue k) (cpsTransform bodyFalse k))
+        else let cont = Lambda ["_v"] (If (Identifier "_v") (cpsTransform bodyTrue k) (cpsTransform bodyFalse k))
+             in
+                cpsTransform cond cont
 
 -- Remember that for Task 1, you only need to handle the core Chups expression types.
 -- You can leave this pattern-match line to prevent an "unmatched pattern" compiler warning.
@@ -137,9 +134,11 @@ cpsTransformS (If cond bodyTrue bodyFalse) k = do
         then 
             return $ If cond bodyTrueTrans bodyFalseTrans
         else do
-            condTrans <- cpsTransformS cond k
-            return $ If condTrans bodyTrueTrans bodyFalseTrans
-
+            counter <- State.get 
+            increment 
+            let id = "_v" ++ show counter
+                cont = Lambda [id] (If (Identifier id) bodyTrueTrans bodyFalseTrans)
+            cpsTransformS cond cont
 
 -- Task 3: Manipulating control flow
 -- Note: Final CPS transformed expressions should not contain any of the following expressions
