@@ -152,10 +152,10 @@ cpsTransformS (Shift name body) k = do
     counter <- State.get
     increment
     let id = "_v" ++ show counter 
-        contId = "_k"
+        contId = "_k" ++ show counter
         newCont = Lambda [id, contId] (Call k [(Identifier id)])
         newShift = Lambda [name] body
-    cpsTransformS (Call newShift [k]) (Identifier "_id")
+    cpsTransformS (Call newShift [newCont]) (Identifier "_id")
 
 -- Reset expressions
 cpsTransformS (Reset val) k = do 
@@ -167,15 +167,25 @@ cpsTransformS (Error msg) k = return $ Call k [Error msg]
 
 -- Raise expressions
 -- TODO: This is untested, and I'm not entirely sure it works
-cpsTransformS (Raise err) k = do 
-    counter <- State.get 
-    increment
-    let id = "_v" ++ show counter
-        newRaise = Lambda [id] err
-    cpsTransformS (Call newRaise [err]) (Identifier "_id")
+cpsTransformS (Raise err) k = return err
 
 -- Try-catch expressions
-cpsTransformS (Try body msg handler) k = undefined
+cpsTransformS (Try body msg handler) k = do
+    v <- cpsTransformS body k
+    h <- cpsTransformS handler k
+    let condError = (Call (Identifier "cps:_error?") [v, k])
+        condEqual = (Call (Identifier "cps:equal?") [v, (Error msg), k])
+        equalIf = (If condEqual h v)
+        errorIf = (If condError equalIf v)
+    return errorIf
+    -- let condError = (Call (Identifier "cps:_error?") [v])
+    -- condErrorTrans <- cpsTransformS condError k
+    -- let condEqual = (Call (Identifier "cps:equal?") [v, (Error msg)])
+    -- condEqualTrans <- cpsTransformS condEqual k
+    -- let handlerCall = (Call k [handler])
+    -- handlerCallTrans <- cpsTransformS handlerCall k
+    -- let condEqualBody = (If condEqualTrans handler v)
+    -- return (If condErrorTrans condEqualBody v)
 
 -------------------------------------------------------------------------------
 -- |
