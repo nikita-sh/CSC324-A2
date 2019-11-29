@@ -126,7 +126,7 @@ cpsTransformS (Call func args) k = do
         then return $ Call func (args ++ [k])
         else handleNonAtomicS (Call func args) k []
 
--- If confitions
+-- If conditions
 cpsTransformS (If cond bodyTrue bodyFalse) k = do
     bodyTrueTrans <- cpsTransformS bodyTrue k
     bodyFalseTrans <- cpsTransformS bodyFalse k
@@ -167,7 +167,6 @@ cpsTransformS (Reset val) k = do
 cpsTransformS (Error msg) k = return $ Call k [Error msg]
 
 -- Raise expressions
--- TODO: This is untested, and I'm not entirely sure it works
 cpsTransformS (Raise err) k = return err
 
 -- Try-catch expressions
@@ -179,14 +178,6 @@ cpsTransformS (Try body msg handler) k = do
         equalIf = (If condEqual h v)
         errorIf = (If condError equalIf v)
     return errorIf
-    -- let condError = (Call (Identifier "cps:_error?") [v])
-    -- condErrorTrans <- cpsTransformS condError k
-    -- let condEqual = (Call (Identifier "cps:equal?") [v, (Error msg)])
-    -- condEqualTrans <- cpsTransformS condEqual k
-    -- let handlerCall = (Call k [handler])
-    -- handlerCallTrans <- cpsTransformS handlerCall k
-    -- let condEqualBody = (If condEqualTrans handler v)
-    -- return (If condErrorTrans condEqualBody v)
 
 -------------------------------------------------------------------------------
 -- |
