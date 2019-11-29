@@ -173,8 +173,8 @@ cpsTransformS (Raise err) k = return err
 cpsTransformS (Try body msg handler) k = do
     v <- cpsTransformS body k
     h <- cpsTransformS handler k
-    let condError = (Call (Identifier "cps:_error?") [v, k])
-        condEqual = (Call (Identifier "cps:equal?") [v, (Error msg), k])
+    let condError = (Call (Identifier "cps:_error?") [v, Identifier "_id"])
+        condEqual = (Call (Identifier "cps:equal?") [v, (Error msg), Identifier "_id"])
         equalIf = (If condEqual h v)
         errorIf = (If condError equalIf v)
     return errorIf
